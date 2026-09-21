@@ -3,6 +3,11 @@ icon: lucide/scroll-text
 ---
 # Changelog
 
+## Unreleased
+
+-   **FIX**: Forward the `custom` keyword argument from the module-level `select`, `select_one`, `iselect`, `match`,
+    `closest`, and `filter` wrappers so custom pseudo-classes work the same as when calling `compile` directly.
+
 ## 2.9.2
 
 -   **FIX**: Fix issue where `:is()` and `:where()` were not accounting for empty selectors in the max selector count as

@@ -71,7 +71,7 @@ SoupSieve(pattern='p:has(#id) > span.some-class:contains(text)', namespaces=None
 ## `soupsieve.select_one()`
 
 ```py3
-def select_one(select, tag, namespaces=None, flags=0, **kwargs):
+def select_one(select, tag, namespaces=None, flags=0, *, custom=None, **kwargs):
     """Select the specified tags."""
 ```
 
@@ -79,7 +79,7 @@ def select_one(select, tag, namespaces=None, flags=0, **kwargs):
 return `None` if a suitable tag was not found.
 
 `select_one` accepts a CSS selector string, a `Tag`/`BeautifulSoup` object, an optional [namespace](#namespaces)
-dictionary, and `flags`.
+dictionary, `flags`, and the keyword-only `custom` argument for [custom selectors](#custom-selectors).
 
 ```pycon3
 >>> import soupsieve as sv
@@ -90,7 +90,7 @@ dictionary, and `flags`.
 ## `soupsieve.select()`
 
 ```py3
-def select(select, tag, namespaces=None, limit=0, flags=0, **kwargs):
+def select(select, tag, namespaces=None, limit=0, flags=0, *, custom=None, **kwargs):
     """Select the specified tags."""
 ```
 
@@ -98,7 +98,7 @@ def select(select, tag, namespaces=None, limit=0, flags=0, **kwargs):
 number of tags returned by providing a positive integer via the `limit` parameter (0 means to return all tags).
 
 `select` accepts a CSS selector string, a `Tag`/`BeautifulSoup` object, an optional [namespace](#namespaces) dictionary,
-a `limit`, and `flags`.
+a `limit`, `flags`, and a keyword-only [custom selector](#custom-selectors) mapping via `custom`.
 
 ```pycon3
 >>> import soupsieve as sv
@@ -109,16 +109,17 @@ a `limit`, and `flags`.
 ## `soupsieve.iselect()`
 
 ```py3
-def iselect(select, node, namespaces=None, limit=0, flags=0, **kwargs):
+def iselect(select, node, namespaces=None, limit=0, flags=0, *, custom=None, **kwargs):
     """Select the specified tags."""
 ```
 
-`iselect` is exactly like `select` except that it returns a generator instead of a list.
+`iselect` is exactly like `select` except that it returns a generator instead of a list. Like `select`, it accepts
+the keyword-only `custom` argument for [custom selectors](#custom-selectors).
 
 ## `soupsieve.closest()`
 
 ```py3
-def closest(select, tag, namespaces=None, flags=0, **kwargs):
+def closest(select, tag, namespaces=None, flags=0, *, custom=None, **kwargs):
     """Match closest ancestor to the provided tag."""
 ```
 
@@ -126,19 +127,19 @@ def closest(select, tag, namespaces=None, flags=0, **kwargs):
 ancestor of the tag or the tag itself.
 
 `closest` accepts a CSS selector string, a `Tag`/`BeautifulSoup` object, an optional [namespace](#namespaces)
-dictionary, and `flags`.
+dictionary, `flags`, and the keyword-only `custom` argument for [custom selectors](#custom-selectors).
 
 ## `soupsieve.match()`
 
 ```py3
-def match(select, tag, namespaces=None, flags=0, **kwargs):
+def match(select, tag, namespaces=None, flags=0, *, custom=None, **kwargs):
     """Match node."""
 ```
 
 The `match` function matches a given tag with a given CSS selector.
 
 `match` accepts a CSS selector string, a `Tag`/`BeautifulSoup` object, an optional [namespace](#namespaces) dictionary,
-and flags.
+flags, and the keyword-only `custom` argument for [custom selectors](#custom-selectors).
 
 ```pycon3
 >>> nodes = sv.select('p:is(.a, .b, .c)', soup)
@@ -151,7 +152,7 @@ False
 ## `soupsieve.filter()`
 
 ```py3
-def filter(select, nodes, namespaces=None, flags=0, **kwargs):
+def filter(select, nodes, namespaces=None, flags=0, *, custom=None, **kwargs):
     """Filter list of nodes."""
 ```
 
@@ -159,7 +160,7 @@ def filter(select, nodes, namespaces=None, flags=0, **kwargs):
 given a `Tag`/`BeautifulSoup` object, it will iterate the direct children filtering them.
 
 `filter` accepts a CSS selector string, an iterable containing nodes, an optional [namespace](#namespaces) dictionary,
-and flags.
+flags, and the keyword-only `custom` argument for [custom selectors](#custom-selectors).
 
 ```pycon3
 >>> sv.filter('p:not(.b)', soup.div)
@@ -195,12 +196,13 @@ would normally cause an identifier to be invalid.
 ## `soupsieve.compile()`
 
 ```py3
-def compile(pattern, namespaces=None, flags=0, **kwargs):
+def compile(pattern, namespaces=None, flags=0, *, custom=None, **kwargs):
     """Compile CSS pattern."""
 ```
 
 `compile` will pre-compile a CSS selector pattern returning a `SoupSieve` object. The `SoupSieve` object has the same
-selector functions available via the module without the need to specify the selector, namespaces, or flags.
+selector functions available via the module without the need to specify the selector, namespaces, or flags. The
+keyword-only `custom` argument provides a [custom selectors](#custom-selectors) mapping.
 
 ```py3
 class SoupSieve:
@@ -229,6 +231,33 @@ class SoupSieve:
 
 Soup Sieve caches compiled patterns for performance. If for whatever reason, you need to purge the cache, simply call
 `purge`.
+
+### Compile Cache and Call Scope
+
+Compilation and matching use two separate layers of context, and keeping them separate is what makes caching safe:
+
+-   **Compiled (cached) context.** `compile` parses a pattern into an immutable selector tree and memoizes it. The
+    cache key is exactly the tuple `(pattern, namespaces, custom, flags)`: the four inputs that can change the compiled
+    syntax. Namespace and custom selector dictionaries are copied into immutable, hashable snapshots at compile time,
+    compared by mapping equality rather than object identity or insertion order. Two calls with equal mappings (even
+    built in different orders or from different dict objects) reuse the same compiled object; a different pattern,
+    different mapping contents (including a prefix rebound to another URI), or different flags compile a new object.
+    Mutating the caller's dictionary after a compile never writes back into the cached selector, and mutating it in
+    place changes the snapshot hash, so the stale entry is not reused.
+
+-   **Dynamic (per-call) context.** The node a call is scoped to (`:scope`, relative selectors such as `& > p`, and
+    `:has()` anchors), along with `limit`, are *not* part of the cache key. Each `select`, `iselect`, `match`,
+    `closest`, `filter`, or `select_one` call builds a fresh matcher against the shared immutable selector tree,
+    anchored at the node passed to that call. One compiled object can therefore be reused against any number of
+    independent documents and scope nodes; scope and limits never leak from one call into another, including calls
+    running concurrently on different threads.
+
+The cache holds the 500 most recently compiled patterns (least-recently-used eviction). Lookup is average `O(1)`, so
+repeated calls with the same inputs cost one dictionary lookup instead of another parse; compiling a new key is
+`O(n)` in the size of the selector grammar. These guarantees do not change any public signatures or supported
+platforms: the cache is an implementation detail, and `purge` remains the only supported way to discard entries.
+Because the snapshots are taken eagerly, callers may freely reuse or mutate their namespace/custom dictionaries after
+calling `compile` without affecting existing compiled patterns.
 
 ## Custom Selectors
 
