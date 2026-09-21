@@ -202,6 +202,22 @@ def compile(pattern, namespaces=None, flags=0, **kwargs):
 `compile` will pre-compile a CSS selector pattern returning a `SoupSieve` object. The `SoupSieve` object has the same
 selector functions available via the module without the need to specify the selector, namespaces, or flags.
 
+The compile cache is keyed by the selector text, the namespace mapping, the custom selector mapping, and flags.
+Mappings are compared by content: two dictionaries with the same key/value pairs reuse the same immutable compiled
+syntax even when their insertion order or object identity differs. Soup Sieve takes immutable snapshots of the
+mappings during compilation, so mutating the caller's dictionaries afterwards cannot affect an existing compiled
+selector; changed mapping content is treated as a new cache key on the next compile.
+
+The node passed to a matching operation and the `limit` value are not compile-time inputs. They belong to that single
+call, so the same compiled selector can be reused on different trees, different scoping nodes, and with different
+limits without leaking one scope into another. HTML versus XML behavior is likewise resolved from the Beautiful Soup
+node for each call.
+
+A cache miss parses the selector and expands custom selectors once, up to the documented selector nesting limit. A
+cache hit avoids that parsing work; lookup uses the immutable mapping hashes and therefore does not scan the cache by
+selector text. Up to 500 compiled selectors are retained until `purge()` clears the cache. Compiled syntax is
+immutable and can be shared between calls; matching state itself is constructed per call.
+
 ```py3
 class SoupSieve:
     """Match tags in Beautiful Soup with CSS selectors."""
@@ -228,7 +244,8 @@ class SoupSieve:
 ## `soupsieve.purge()`
 
 Soup Sieve caches compiled patterns for performance. If for whatever reason, you need to purge the cache, simply call
-`purge`.
+`purge`. This clears only the global compile cache; it is not needed between documents, scoping nodes, or `limit`
+values because those are never stored as cache keys.
 
 ## Custom Selectors
 
