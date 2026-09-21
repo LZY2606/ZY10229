@@ -1,0 +1,91 @@
+template: 'facelessuser:master-labels:labels.yml:master'
+
+brace_expansion: true
+minus_negate: false
+extended_glob: true
+
+rules:
+  - labels: ['C: infrastructure']
+    patterns: ['*|@(tools|requirements|.github)/**|!*.md']
+
+  - labels: ['C: source']
+    patterns: ['soupsieve/**']
+
+  - labels: ['C: tests']
+    patterns: ['tests/**']
+
+  - labels: ['C: docs']
+    patterns: ['docs/**|*.md']
+
+  - labels: ['C: API']
+    patterns: ['soupsieve/__init__.py']
+
+  - labels: ['C: css-parsing']
+    patterns: ['soupsieve/css_parser.py']
+
+  - labels: ['C: css-matching']
+    patterns: ['soupsieve/css_match.py']
+
+  - labels: ['C: css-level-1']
+    patterns: ['tests/test_level1/**']
+
+  - labels: ['C: css-level-2']
+    patterns: ['tests/test_level2/**']
+
+  - labels: ['C: css-level-3']
+    patterns: ['tests/test_level3/**']
+
+  - labels: ['C: css-level-4']
+    patterns: ['tests/test_level4/**']
+
+  - labels: ['C: css-level-5']
+    patterns: ['tests/test_level5/**']
+
+  - labels: ['C: css-custom']
+    patterns: ['tests/test_extra/**']
+
+labels:
+- name: 'C: css-parsing'
+  renamed: css-parsing
+  color: subcategory
+  description: Related to CSS parsing.
+
+- name: 'C: css-matching'
+  renamed: css-matching
+  color: subcategory
+  description: Related to CSS matching.
+
+- name: 'C: API'
+  renamed: API
+  color: subcategory
+  description: Related to the API.
+
+- name: 'C: css-level-1'
+  renamed: css-level-1
+  color: subcategory
+  description: CSS level 1 selectors.
+
+- name: 'C: css-level-2'
+  renamed: css-level-2
+  color: subcategory
+  description: CSS level 2 selectors.
+
+- name: 'C: css-level-3'
+  renamed: css-level-3
+  color: subcategory
+  description: CSS level 3 selectors.
+
+- name: 'C: css-level-4'
+  renamed: css-level-4
+  color: subcategory
+  description: CSS level 4 selectors.
+
+- name: 'C: css-level-5'
+  renamed: css-level-5
+  color: subcategory
+  description: CSS level 5 selectors.
+
+- name: 'C: css-custom'
+  renamed: css-custom
+  color: subcategory
+  description: CSS custom selectors.
